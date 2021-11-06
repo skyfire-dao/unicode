@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract SkyfireDAOToken is ERC20, Ownable {
-    constructor() ERC20("Skyfire DAO Token", "SDT") {
+    constructor() ERC20("Skyfire Dummy Rewards Token", "SDT") {
         _mint(msg.sender, 1000000000 * 10 ** decimals());
     }
 
