@@ -1,9 +1,12 @@
 import * as dotenv from "dotenv";
 import Web3 from "web3";
 import express from "express";
-import helmet from "helmet";
+// import helmet from "helmet";
 import path from "path";
 import Database from "better-sqlite3";
+import { parseBalanceMap } from "./parse-balance-map";
+// import { ethers } from "hardhat";
+
 // import Moralis from "moralis/node";
 dotenv.config();
 
@@ -12,7 +15,7 @@ dotenv.config();
 // const moralisSecret = process.env.MORALIS_SECRET;
 // Moralis.start({ serverUrl, appId, moralisSecret});
 // const web3 = new Moralis.Web3();
-console.log("process.env.RINKEBY_KEY",process.env.RINKEBY_KEY);
+console.log("process.env.RINKEBY_KEY", process.env.RINKEBY_KEY);
 const web3 = new Web3(
   new Web3.providers.WebsocketProvider(process.env.RINKEBY_KEY || "")
 );
@@ -21,7 +24,7 @@ dotenv.config();
 
 const app = express();
 const PORT = 8000;
-app.use(helmet());
+// app.use(helmet());
 app.use(express.json());
 
 /**
@@ -44,14 +47,14 @@ const db = new Database("skyfire.db", { verbose: console.log });
 db.exec(createTable);
 
 app.use("/public", express.static(path.join(__dirname, "game")));
-// app.get("/", function(req, res) {
+// app.get("/", function(req:any, res:any)  {
 //   res.sendFile(path.join(__dirname, "./game/index.html"));
 // });
 
 /**
  * Store the scoreboard for a particular user into the current epoch
  */
-app.post("/public/user/scoreboard", async (req, res) => {
+app.post("/public/user/scoreboard", async (req: any, res: any) => {
   console.log(req.body);
   const data: IScore = req.body as IScore;
   res.send("Request Received");
@@ -62,14 +65,14 @@ app.post("/public/user/scoreboard", async (req, res) => {
 /**
  * For a particular user get the score board
  */
-app.get("/public/user/history", (req, res) => {
+app.get("/public/user/history", (req: any, res: any) => {
   res.send("Got a request");
 });
 
 /**
  * Get scoreboard for all users
  */
-app.get("/public/history", (req, res) => {
+app.get("/public/history", (req: any, res: any) => {
   res.send("Got a request");
 });
 
@@ -97,12 +100,39 @@ async function calculateEpoch() {
 }
 
 async function getAllScores() {
-  const stmt = db.prepare('SELECT score, address FROM scores');
+  const stmt = db.prepare("SELECT score, address FROM scores");
   const scores = await stmt.all();
   console.log(scores);
   return scores;
 }
 
+async function generateMerkleRoot() {
+  const jsonData: any = {};
+  const scores = await getAllScores();
+  // eslint-disable-next-line array-callback-return
+  scores.map((obj) => {
+    jsonData[obj.address] = obj.score;
+  });
+console.log(jsonData);
+  const merkleRootData = parseBalanceMap(jsonData);
+  console.log(JSON.stringify(merkleRootData));
+  // 1. Store the data
+
+
+  // Assume that the hardhat code has the correct address in mnemonic
+  // const MerkleDistributor = await ethers.getContractFactory(
+  //   "MerkleDistributor"
+  // );
+  // const merkleDistributor = await MerkleDistributor.attach(
+  //   process.env.MERKLE_DISTRIBUTOR
+  // );
+  // merkleDistributor.setMerkleRootPerEpoch(
+  //   merkleRootData.merkleRoot,
+  //   CURRENT_EPOCH
+  // );
+}
+
 // calculateEpoch();
-saveToDB(28, "0x74A65321C633803F6BDe1614F69Dc3141B89b5f8");
-getAllScores();
+// saveToDB(28, "0x44A65321C633803F6BDe1614F69Dc3141B89b5f8");
+// getAllScores();
+// generateMerkleRoot();

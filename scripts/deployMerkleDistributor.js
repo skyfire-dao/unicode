@@ -14,8 +14,9 @@ async function main() {
   // await hre.run('compile');
 
   // We get the contract to deploy
-  const [deployer] = await ethers.getSigners();
-  const MerkleDistributor = await ethers.getContractFactory("MerkleDistributor");
+  const MerkleDistributor = await ethers.getContractFactory(
+    "MerkleDistributor"
+  );
   const merkleDistributor = await MerkleDistributor.deploy();
 
   await merkleDistributor.deployed();
@@ -23,7 +24,7 @@ async function main() {
   console.log("Deployed to:", merkleDistributor.address);
 
   return {
-    'merkleDistributor': merkleDistributor.address
+    merkleDistributor: merkleDistributor.address,
   }
 }
 
@@ -46,7 +47,7 @@ function delay(ms) {
 main()
   .then( async (deployedData) => {
     await delay(80000);
-    //await verify(deployedData.merkleDistributor, );
+    // await verify(deployedData.merkleDistributor, );
     process.exit(0)
   })
   .catch((error) => {
