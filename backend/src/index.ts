@@ -6,7 +6,8 @@ import path from "path";
 import Database from "better-sqlite3";
 import { parseBalanceMap } from "./parse-balance-map";
 // import { ethers } from "hardhat";
-
+import HDWalletProvider from "@truffle/hdwallet-provider";
+import MerkleDistributor from "../../artifacts/contracts/MerkleDistributor.sol/MerkleDistributor.json";
 // import Moralis from "moralis/node";
 dotenv.config();
 
@@ -16,9 +17,15 @@ dotenv.config();
 // Moralis.start({ serverUrl, appId, moralisSecret});
 // const web3 = new Moralis.Web3();
 console.log("process.env.RINKEBY_KEY", process.env.RINKEBY_KEY);
-const web3 = new Web3(
-  new Web3.providers.WebsocketProvider(process.env.RINKEBY_KEY || "")
-);
+let provider = new HDWalletProvider({
+  mnemonic: {
+    phrase: process.env.MNEMONIC
+  },
+  providerOrUrl: "https://eth-rinkeby.alchemyapi.io/v2/5U18UunT56NtgtJdo1-MSMm-sL2DvOcy"
+});
+const web3 = new Web3(provider);
+  /*new Web3.providers.WebsocketProvider(process.env.RINKEBY_KEY || "")
+);*/
 
 dotenv.config();
 
@@ -39,7 +46,7 @@ interface IScore {
  * CONSTANTS
  */
 const EPOCH_START = 9593770;
-const CURRENT_EPOCH = 0;
+let CURRENT_EPOCH = 0;
 const createTable =
   "CREATE TABLE IF NOT EXISTS scores('epoch' number, 'score' number, 'address' varchar);";
 
@@ -94,7 +101,7 @@ async function saveToDB(score: number, address: string) {
 
 async function calculateEpoch() {
   const currentBlock = await web3.eth.getBlockNumber();
-  const currentEpoch = Math.round((currentBlock % EPOCH_START) / 100);
+  const currentEpoch = Math.round((currentBlock - EPOCH_START) / 100);
   console.log(currentEpoch);
   return currentEpoch;
 }
@@ -119,6 +126,7 @@ console.log(jsonData);
   // 1. Store the data
 
 
+  const merkleDistributor = new web3.eth.Contract(MerkleDistributor.abi, process.env.MERKLE_DISTRIBUTOR);
   // Assume that the hardhat code has the correct address in mnemonic
   // const MerkleDistributor = await ethers.getContractFactory(
   //   "MerkleDistributor"
@@ -126,10 +134,11 @@ console.log(jsonData);
   // const merkleDistributor = await MerkleDistributor.attach(
   //   process.env.MERKLE_DISTRIBUTOR
   // );
-  // merkleDistributor.setMerkleRootPerEpoch(
-  //   merkleRootData.merkleRoot,
-  //   CURRENT_EPOCH
-  // );
+  CURRENT_EPOCH = await calculateEpoch();
+  await merkleDistributor.methods.setMerkleRootPerEpoch(
+    merkleRootData.merkleRoot,
+    CURRENT_EPOCH
+  );
 }
 
 // calculateEpoch();
