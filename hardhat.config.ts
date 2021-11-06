@@ -48,7 +48,7 @@ const config: HardhatUserConfig = {
       accounts
     },
     rinkeby: {
-      url: process.env.RINKEBY_RPC || "https://rinkeby.infura.io/v3/XX",
+      url: process.env.RINKEBY_HTTP,
       accounts,
     },
   },

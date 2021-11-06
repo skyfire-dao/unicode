@@ -1,8 +1,12 @@
 # Architecture
 We intend to create a simple distribution contract that will allow us to distribute the tokens from the the game in a realistic way. Uniswap v3 ppol and staker contracts are used to demostrate the case of a gamefied liquidity mining. Of course instead of liquidity mining these can be integrated and used with other use case for eg. Olympus DAO bond and stake. 
 
+## How to run
+```  ```
 
-
+## Claiming
+1. Call get /public/getMyProof -> proofs + amount 
+2. Then call claim with this data
 
 # Advanced Sample Hardhat Project
 

@@ -1,5 +1,6 @@
 import * as dotenv from "dotenv";
 import Web3 from "web3";
+import { AbiItem } from "web3-utils";
 import express from "express";
 // import helmet from "helmet";
 import path from "path";
@@ -17,16 +18,20 @@ dotenv.config();
 // Moralis.start({ serverUrl, appId, moralisSecret});
 // const web3 = new Moralis.Web3();
 console.log("process.env.RINKEBY_KEY", process.env.RINKEBY_KEY);
-let provider = new HDWalletProvider({
+const provider = new HDWalletProvider({
   mnemonic: {
-    phrase: process.env.MNEMONIC
+    phrase: process.env.MNEMONIC || "",
   },
-  providerOrUrl: "https://eth-rinkeby.alchemyapi.io/v2/5U18UunT56NtgtJdo1-MSMm-sL2DvOcy"
+  // providerOrUrl:  "http://127.0.0.1:8545/" || "", // process.env.RINKEBY_HTTP
+  providerOrUrl:
+    "https://eth-rinkeby.alchemyapi.io/v2/zAqMRybs3vFvZrsMR_4j-1K2Xtr8-hm5" ||
+    "", //
 });
 const web3 = new Web3(provider);
-  /*new Web3.providers.WebsocketProvider(process.env.RINKEBY_KEY || "")
-);*/
-
+// const wssWeb3 = new Web3(
+//   // new Web3.providers.WebsocketProvider("http://127.0.0.1:8545/" || "")
+//   new Web3.providers.WebsocketProvider(process.env.RINKEBY_HTTP || "")
+// );
 dotenv.config();
 
 const app = express();
@@ -46,7 +51,7 @@ interface IScore {
  * CONSTANTS
  */
 const EPOCH_START = 9593770;
-let CURRENT_EPOCH = 0;
+
 const createTable =
   "CREATE TABLE IF NOT EXISTS scores('epoch' number, 'score' number, 'address' varchar);";
 
@@ -67,6 +72,7 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
   res.send("Request Received");
 
   await saveToDB(data.score, data.address);
+  await generateMerkleRoot();
 });
 
 /**
@@ -102,17 +108,18 @@ async function saveToDB(score: number, address: string) {
 async function calculateEpoch() {
   const currentBlock = await web3.eth.getBlockNumber();
   const currentEpoch = Math.round((currentBlock - EPOCH_START) / 100);
-  console.log(currentEpoch);
+  console.log("currentEpoch--", currentEpoch);
   return currentEpoch;
 }
 
 async function getAllScores() {
-  const stmt = db.prepare("SELECT score, address FROM scores");
-  const scores = await stmt.all();
+  const stmt = db.prepare("SELECT score, address FROM scores WHERE epoch =?");
+  const scores = await stmt.all(CURRENT_EPOCH);
   console.log(scores);
   return scores;
 }
 
+let CURRENT_EPOCH = 0;
 async function generateMerkleRoot() {
   const jsonData: any = {};
   const scores = await getAllScores();
@@ -120,28 +127,228 @@ async function generateMerkleRoot() {
   scores.map((obj) => {
     jsonData[obj.address] = obj.score;
   });
-console.log(jsonData);
+  console.log(jsonData);
   const merkleRootData = parseBalanceMap(jsonData);
   console.log(JSON.stringify(merkleRootData));
+  console.log("CURRENT EPOCH", CURRENT_EPOCH);
   // 1. Store the data
-
-
-  const merkleDistributor = new web3.eth.Contract(MerkleDistributor.abi, process.env.MERKLE_DISTRIBUTOR);
-  // Assume that the hardhat code has the correct address in mnemonic
-  // const MerkleDistributor = await ethers.getContractFactory(
-  //   "MerkleDistributor"
-  // );
-  // const merkleDistributor = await MerkleDistributor.attach(
-  //   process.env.MERKLE_DISTRIBUTOR
-  // );
-  CURRENT_EPOCH = await calculateEpoch();
-  await merkleDistributor.methods.setMerkleRootPerEpoch(
-    merkleRootData.merkleRoot,
-    CURRENT_EPOCH
+  const abi = [
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "token_",
+          type: "address",
+        },
+      ],
+      stateMutability: "nonpayable",
+      type: "constructor",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "index",
+          type: "uint256",
+        },
+        {
+          indexed: false,
+          internalType: "address",
+          name: "account",
+          type: "address",
+        },
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "amount",
+          type: "uint256",
+        },
+      ],
+      name: "Claimed",
+      type: "event",
+    },
+    {
+      anonymous: false,
+      inputs: [
+        {
+          indexed: true,
+          internalType: "address",
+          name: "previousOwner",
+          type: "address",
+        },
+        {
+          indexed: true,
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "OwnershipTransferred",
+      type: "event",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "index",
+          type: "uint256",
+        },
+        {
+          internalType: "address",
+          name: "account",
+          type: "address",
+        },
+        {
+          internalType: "uint256",
+          name: "amount",
+          type: "uint256",
+        },
+        {
+          internalType: "bytes32[]",
+          name: "merkleProof",
+          type: "bytes32[]",
+        },
+        {
+          internalType: "uint256",
+          name: "_epoch",
+          type: "uint256",
+        },
+      ],
+      name: "claim",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "index",
+          type: "uint256",
+        },
+      ],
+      name: "isClaimed",
+      outputs: [
+        {
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
+      ],
+      name: "merkleRootInEpoch",
+      outputs: [
+        {
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "owner",
+      outputs: [
+        {
+          internalType: "address",
+          name: "",
+          type: "address",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "renounceOwnership",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "bytes32",
+          name: "_merkleRoot",
+          type: "bytes32",
+        },
+        {
+          internalType: "uint256",
+          name: "_epoch",
+          type: "uint256",
+        },
+      ],
+      name: "setMerkleRootPerEpoch",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+    {
+      inputs: [],
+      name: "token",
+      outputs: [
+        {
+          internalType: "address",
+          name: "",
+          type: "address",
+        },
+      ],
+      stateMutability: "view",
+      type: "function",
+    },
+    {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "transferOwnership",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
+  ];
+  const merkleDistributor = new web3.eth.Contract(
+    abi as AbiItem[],
+    process.env.MERKLE_DISTRIBUTOR
   );
+
+  const latestEpoch = await calculateEpoch();
+
+  if (latestEpoch > CURRENT_EPOCH) {
+    await merkleDistributor.methods
+      .setMerkleRootPerEpoch(merkleRootData.merkleRoot, CURRENT_EPOCH)
+      .send(
+        { from: "0xCd746dbAec699A3E0B42e411909e67Ad8BbCC315" },
+        (error: any, result: any) => {
+          console.log(error, result);
+        }
+      );
+    CURRENT_EPOCH = latestEpoch;
+  }
+}
+
+async function init() {
+ CURRENT_EPOCH = await calculateEpoch();
 }
 
 // calculateEpoch();
-// saveToDB(28, "0x44A65321C633803F6BDe1614F69Dc3141B89b5f8");
+// saveToDB(22, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
 // getAllScores();
-// generateMerkleRoot();
+init()

@@ -12,9 +12,8 @@ contract MerkleDistributor is IMerkleDistributor, Ownable {
     // This is a packed array of booleans.
     mapping(uint256 => uint256) private claimedBitMap;
     mapping(uint256 => bytes32) public merkleRootInEpoch;
-    constructor(address token_, bytes32 merkleRoot_) public {
+    constructor(address token_) public {
         token = token_;
-        merkleRootInEpoch[0] = merkleRoot_;
     }
 
     function isClaimed(uint256 index) public view override returns (bool) {
