@@ -4,6 +4,7 @@ import { AbiItem } from "web3-utils";
 import cors from "cors";
 import express from "express";
 // import helmet from "helmet";
+
 import path from "path";
 import Database from "better-sqlite3";
 import { parseBalanceMap } from "./parse-balance-map";
@@ -80,7 +81,12 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
 /**
  * For a particular user get the score board
  */
-app.get("/public/user/claim", cors(), async (req: any, res: any) => {
+app.get(
+  "/public/user/claim",
+  (cors as (options: cors.CorsOptions) => express.RequestHandler)({
+    maxAge: 84600,
+  }),
+  async (req: any, res: any) => {
   const user = req.query?.userAddress;
   if (user) {
     // retrieve from the DB the latest claims for this user and sent it
