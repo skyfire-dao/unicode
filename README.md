@@ -3,6 +3,10 @@
 Skyfire DAO delivers games for distribution events for eg. Liquidity Mining events.
 You can utilize our contracts and game for your LM event. Skyfire DAO tokens are rewarded to all partner LM events. For partnerships, just create a github issue and we will get in touch.
 
+<p align="center">
+  <img src="CoverImage.png"/>
+</p>
+
 # Architecture
 
 We utilize Gamemaker and Uniswap's Merkle Distribution to distribute tokens for different snapshots as per the rewards in the LM program.
