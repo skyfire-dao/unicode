@@ -9,9 +9,9 @@ For partnerships, just create a github issue and we will get in touch.
 </p>
 
 ## Innovation
-Playing a game allows for a better UX for the end user to participate in the Defi ecosystem and game incentives makes it interesting for a wider variety of audience to participate in Liquidity Mining events. 
+Playing a game allows for a better UX for the end user to participate in the Defi ecosystem and game incentives makes it interesting for a wider variety of audience to participate in **Liquidity Mining**  events for example by making use of Uniswap's Staking contract.
 
-We extended the Uniswap's Merkle Distributor contract so that a single contract can be used for multiple epochs or snapshots.
+We extended the **Uniswap's Merkle Distributor** contract so that a single contract can be used for multiple epochs or snapshots and this further ensures fairness as the scores of each epoch are provable verifiable on chain.
 
 <p align="center">
   <img src="skyfireDAO.png"/>
