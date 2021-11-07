@@ -140,7 +140,7 @@ async function getMyLatestClaim(address: string) {
   return claims;
 }
 
-//the merkle root has to be created for an epoch that is complete eg. T-1
+// the merkle root has to be created for an epoch that is complete eg. T-1
 async function generateMerkleRoot() {
   const jsonData: any = {};
   const abi = [
@@ -359,19 +359,19 @@ async function generateMerkleRoot() {
 
   if (latestEpoch > currentEpoch) {
     const scores = await getAllScores(currentEpoch);
-
-    // eslint-disable-next-line array-callback-return
-    scores.map((obj) => {
-      jsonData[obj.address] = obj.score * 1000000;
-    });
-    console.log("Scores Obj --", jsonData);
-    const merkleRootData = parseBalanceMap(jsonData);
-    console.log(JSON.stringify(merkleRootData));
-
-    const updateStmt = db.prepare(
-      "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
-    );
     try {
+      // eslint-disable-next-line array-callback-return
+      scores.map((obj) => {
+        jsonData[obj.address] = obj.score * 1000000;
+      });
+      console.log("Scores Obj --", jsonData);
+      const merkleRootData = parseBalanceMap(jsonData);
+      console.log(JSON.stringify(merkleRootData));
+
+      const updateStmt = db.prepare(
+        "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
+      );
+
       for (const [key, value] of Object.entries(merkleRootData.claims)) {
         console.log(`${key}: ${value.proof}`);
         const info = updateStmt.run(
@@ -413,6 +413,5 @@ async function init() {
   // calculateEpoch();
   // getAllScores();
 }
-
 
 init();
