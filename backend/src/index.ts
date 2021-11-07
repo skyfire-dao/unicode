@@ -118,7 +118,7 @@ async function saveToDB(score: number, address: string) {
 
 async function calculateEpoch() {
   const currentBlock = await web3.eth.getBlockNumber();
-  const currentEpoch = Math.round((currentBlock - EPOCH_START) / 100); //Every 100 ETH Block increment 1 epoch
+  const currentEpoch = Math.round((currentBlock - EPOCH_START) / 10); //Every 10 ETH Block increment 1 epoch
   console.log("currentEpoch--", currentEpoch);
   return currentEpoch;
 }
