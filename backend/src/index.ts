@@ -409,59 +409,10 @@ async function init() {
   // await saveToDB(22, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
   // await testUpdate()
   // await getMyLatestClaim("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
-  setInterval(() => generateMerkleRoot(), 5 * 60 * 1000); // Every 5 minutes check if epoch is over
+  setInterval(() => generateMerkleRoot(), 2 * 60 * 1000); // Every 5 minutes check if epoch is over
   // calculateEpoch();
   // getAllScores();
 }
 
-async function testUpdate() {
-  const merkleRootData = {
-    merkleRoot:
-      "0x9dbaed34b875c88f19382e9c7e38b934bdca7051bb6b807324b4816b3f0e4956",
-    tokenTotal: "0x6a",
-    claims: {
-      "0x44A65321C633803F6BDe1614F69Dc3141B89b5f8": {
-        index: 0,
-        amount: "0x1c",
-        proof: [
-          "0x8c2578c6cde14f5d0eff494deebaa86166a85ca76b74e64ade63ec09bc552f89",
-        ],
-      },
-      "0x7BF0C0259DA2db1Cc9A484945722221c5B800139": {
-        index: 1,
-        amount: "0x38",
-        proof: [
-          "0x6881e14ddccbac4bee4c217c47eabbd0e04da39b7bd06cb9db530037f97ee275",
-          "0xfd5e85f9823519dd14051a6e4bdae0eb5ce47cd1529a1c21fa3462e8162d9855",
-        ],
-      },
-      "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": {
-        index: 2,
-        amount: "0x16",
-        proof: [
-          "0xdca1508b8b4e2d17ddfe525ee1b0d46c7fdfa77b06549091dd23e16f93334595",
-          "0xfd5e85f9823519dd14051a6e4bdae0eb5ce47cd1529a1c21fa3462e8162d9855",
-        ],
-      },
-    },
-  };
-
-  const updateStmt = db.prepare(
-    "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
-  );
-
-  for (const [key, value] of Object.entries(merkleRootData.claims)) {
-    console.log(`${key}: ${value.proof}`);
-    const info = updateStmt.run(
-      value.proof.toString(),
-      value.index,
-      currentEpoch,
-      key.toLowerCase()
-    );
-    if (info.changes === 0) {
-      console.error("FAILED TO UPDATE MERKLE DATA", key, merkleRootData.claims);
-    }
-  }
-}
 
 init();
