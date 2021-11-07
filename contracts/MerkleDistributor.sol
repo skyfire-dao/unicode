@@ -10,24 +10,24 @@ contract MerkleDistributor is IMerkleDistributor, Ownable {
     address public immutable override token;
 
     // This is a packed array of booleans.
-    mapping(uint256 => uint256) private claimedBitMap;
+    mapping(uint256 => mapping(uint256 => uint256)) private claimedInEpoch;
     mapping(uint256 => bytes32) public merkleRootInEpoch;
     constructor(address token_) public {
         token = token_;
     }
 
-    function isClaimed(uint256 index) public view override returns (bool) {
+    function isClaimed(uint256 index, uint256 _epoch) public view override returns (bool) {
         uint256 claimedWordIndex = index / 256;
         uint256 claimedBitIndex = index % 256;
-        uint256 claimedWord = claimedBitMap[claimedWordIndex];
+        uint256 claimedWord = claimedInEpoch[_epoch][claimedWordIndex];
         uint256 mask = (1 << claimedBitIndex);
         return claimedWord & mask == mask;
     }
 
-    function _setClaimed(uint256 index) private {
+    function _setClaimed(uint256 index, uint256 _epoch) private {
         uint256 claimedWordIndex = index / 256;
         uint256 claimedBitIndex = index % 256;
-        claimedBitMap[claimedWordIndex] = claimedBitMap[claimedWordIndex] | (1 << claimedBitIndex);
+        claimedInEpoch[_epoch][claimedWordIndex] = claimedInEpoch[_epoch][claimedWordIndex] | (1 << claimedBitIndex);
     }
 
     function claim(
@@ -37,7 +37,7 @@ contract MerkleDistributor is IMerkleDistributor, Ownable {
         bytes32[] calldata merkleProof,
         uint256 _epoch) 
     external override {
-        require(!isClaimed(index), "MD: Drop already claimed.");
+        require(!isClaimed(index, _epoch), "MD: Drop already claimed.");
         require(account == msg.sender, "Claimer is a different account");
 
         // Verify the merkle proof.
@@ -46,10 +46,10 @@ contract MerkleDistributor is IMerkleDistributor, Ownable {
         require(MerkleProof.verify(merkleProof, merkleRootInEpoch[_epoch], node), "MD: Invalid proof.");
 
         // Mark it claimed and send the token.
-        _setClaimed(index);
+        _setClaimed(index, _epoch);
         require(IERC20(token).transfer(account, amount), "MD: Transfer failed.");
 
-        emit Claimed(index, account, amount);
+        emit Claimed(_epoch, index, account, amount);
     }
 
     function setMerkleRootPerEpoch(bytes32 _merkleRoot, uint256 _epoch) external onlyOwner() {

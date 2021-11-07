@@ -48,12 +48,13 @@ interface IScore {
 }
 
 /**
- * CONSTANTS
+ * CONSTANTS & Globals
  */
 const EPOCH_START = 9593770;
+let currentEpoch = 0;
 
 const createTable =
-  "CREATE TABLE IF NOT EXISTS scores('epoch' number, 'score' number, 'address' varchar);";
+  "CREATE TABLE IF NOT EXISTS scores('epoch' number, 'score' number, 'address' varchar, 'epoch_index' number, 'claims' varchar);";
 
 const db = new Database("skyfire.db", { verbose: console.log });
 db.exec(createTable);
@@ -72,14 +73,20 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
   res.send("Request Received");
 
   await saveToDB(data.score, data.address);
-  await generateMerkleRoot();
 });
 
 /**
  * For a particular user get the score board
  */
-app.get("/public/user/history", (req: any, res: any) => {
-  res.send("Got a request");
+app.get("/public/user/claim", async (req: any, res: any) => {
+  const user = req.query?.userAddress;
+  if (user) {
+    // retrieve from the DB the latest claims for this user and sent it
+    const claims = await getMyLatestClaim(user);
+    res.send(JSON.stringify(claims));
+  } else {
+    res.send("No user found");
+  }
 });
 
 /**
@@ -100,38 +107,39 @@ async function saveToDB(score: number, address: string) {
   );
   const info = updateStmt.run(score, epoch, address);
   if (info.changes === 0) {
-    const stmt = db.prepare("INSERT INTO scores VALUES (?, ?, ?)");
+    const stmt = db.prepare(
+      "INSERT INTO scores (epoch, score, address) VALUES (?, ?, ?)"
+    );
     stmt.run(epoch, score, address);
   }
 }
 
 async function calculateEpoch() {
   const currentBlock = await web3.eth.getBlockNumber();
-  const currentEpoch = Math.round((currentBlock - EPOCH_START) / 100);
+  const currentEpoch = Math.round((currentBlock - EPOCH_START) / 100); //Every 100 ETH Block increment 1 epoch
   console.log("currentEpoch--", currentEpoch);
   return currentEpoch;
 }
 
-async function getAllScores() {
-  const stmt = db.prepare("SELECT score, address FROM scores WHERE epoch =?");
-  const scores = await stmt.all(CURRENT_EPOCH);
+async function getAllScores(_epoch: number) {
+  const stmt = db.prepare("SELECT score, address FROM scores WHERE epoch = ?");
+  const scores = await stmt.all(_epoch);
   console.log(scores);
   return scores;
 }
+// TODO: We need to store the claimed already information here so that the latest unclaimed can be sent
+async function getMyLatestClaim(address: string) {
+  const stmt = db.prepare(
+    "SELECT address, score, claims, epoch_index FROM scores WHERE address = ? ORDER BY epoch DESC LIMIT 1"
+  );
+  const claims = await stmt.all(address.toLowerCase());
+  console.log("claims", claims);
+  return claims;
+}
 
-let CURRENT_EPOCH = 0;
+//the merkle root has to be created for an epoch that is complete eg. T-1
 async function generateMerkleRoot() {
   const jsonData: any = {};
-  const scores = await getAllScores();
-  // eslint-disable-next-line array-callback-return
-  scores.map((obj) => {
-    jsonData[obj.address] = obj.score;
-  });
-  console.log(jsonData);
-  const merkleRootData = parseBalanceMap(jsonData);
-  console.log(JSON.stringify(merkleRootData));
-  console.log("CURRENT EPOCH", CURRENT_EPOCH);
-  // 1. Store the data
   const abi = [
     {
       inputs: [
@@ -331,24 +339,117 @@ async function generateMerkleRoot() {
 
   const latestEpoch = await calculateEpoch();
 
-  if (latestEpoch > CURRENT_EPOCH) {
-    await merkleDistributor.methods
-      .setMerkleRootPerEpoch(merkleRootData.merkleRoot, CURRENT_EPOCH)
-      .send(
-        { from: "0xCd746dbAec699A3E0B42e411909e67Ad8BbCC315" },
-        (error: any, result: any) => {
-          console.log(error, result);
+  const msg =
+    "Attempting merkleroot generation current epoch && Latest epoch -";
+  console.log(msg, currentEpoch, latestEpoch);
+
+  if (latestEpoch > currentEpoch) {
+    const scores = await getAllScores(currentEpoch);
+
+    // eslint-disable-next-line array-callback-return
+    scores.map((obj) => {
+      jsonData[obj.address] = obj.score * 1000000;
+    });
+    console.log("Scores Obj --", jsonData);
+    const merkleRootData = parseBalanceMap(jsonData);
+    console.log(JSON.stringify(merkleRootData));
+
+    const updateStmt = db.prepare(
+      "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
+    );
+    try {
+
+    
+      for (const [key, value] of Object.entries(merkleRootData.claims)) {
+        console.log(`${key}: ${value.proof}`);
+        const info = updateStmt.run(
+          value.proof.toString(),
+          value.index,
+          currentEpoch,
+          key.toLowerCase()
+        );
+        if (info.changes === 0) {
+          console.error(
+            "FAILED TO UPDATE MERKLE DATA",
+            key,
+            merkleRootData.claims
+          );
         }
-      );
-    CURRENT_EPOCH = latestEpoch;
+      }
+
+      await merkleDistributor.methods
+        .setMerkleRootPerEpoch(merkleRootData.merkleRoot, currentEpoch)
+        .send(
+          { from: "0xCd746dbAec699A3E0B42e411909e67Ad8BbCC315" },
+          (error: any, result: any) => {
+            console.log(error, result);
+          }
+        );
+      currentEpoch = latestEpoch;
+    } catch (error) {
+      console.error(error);
+    }
   }
 }
 
 async function init() {
- CURRENT_EPOCH = await calculateEpoch();
+  currentEpoch = await calculateEpoch();
+  // await saveToDB(22, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+  // await testUpdate()
+  // await getMyLatestClaim("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+  setInterval(() => generateMerkleRoot(), 5 * 60 * 1000); // Every 5 minutes check if epoch is over
+  // calculateEpoch();
+  // getAllScores();
 }
 
-// calculateEpoch();
-// saveToDB(22, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
-// getAllScores();
-init()
+async function testUpdate() {
+  const merkleRootData = {
+    merkleRoot:
+      "0x9dbaed34b875c88f19382e9c7e38b934bdca7051bb6b807324b4816b3f0e4956",
+    tokenTotal: "0x6a",
+    claims: {
+      "0x44A65321C633803F6BDe1614F69Dc3141B89b5f8": {
+        index: 0,
+        amount: "0x1c",
+        proof: [
+          "0x8c2578c6cde14f5d0eff494deebaa86166a85ca76b74e64ade63ec09bc552f89",
+        ],
+      },
+      "0x7BF0C0259DA2db1Cc9A484945722221c5B800139": {
+        index: 1,
+        amount: "0x38",
+        proof: [
+          "0x6881e14ddccbac4bee4c217c47eabbd0e04da39b7bd06cb9db530037f97ee275",
+          "0xfd5e85f9823519dd14051a6e4bdae0eb5ce47cd1529a1c21fa3462e8162d9855",
+        ],
+      },
+      "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": {
+        index: 2,
+        amount: "0x16",
+        proof: [
+          "0xdca1508b8b4e2d17ddfe525ee1b0d46c7fdfa77b06549091dd23e16f93334595",
+          "0xfd5e85f9823519dd14051a6e4bdae0eb5ce47cd1529a1c21fa3462e8162d9855",
+        ],
+      },
+    },
+  };
+
+  const updateStmt = db.prepare(
+    "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
+  );
+
+  for (const [key, value] of Object.entries(merkleRootData.claims)) {
+    console.log(`${key}: ${value.proof}`);
+    const info = updateStmt.run(
+      value.proof.toString(),
+      value.index,
+      currentEpoch,
+      key.toLowerCase()
+    );
+    if (info.changes === 0) {
+      console.error("FAILED TO UPDATE MERKLE DATA", key, merkleRootData.claims);
+    }
+  }
+}
+
+init();
