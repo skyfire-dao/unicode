@@ -74,7 +74,10 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
   const data: IScore = req.body as IScore;
   res.send("Request Received");
   if (web3.utils.isAddress(data.address) && data.score > 0) {
-    await saveToDB(data.score, data.address);
+    await saveToDB(
+      parseInt(web3.utils.toWei(data.score.toString())),
+      data.address
+    );
   }
 });
 
@@ -139,7 +142,7 @@ async function getAllScores(_epoch: number) {
 // TODO: We need to store the claimed already information here so that the latest unclaimed can be sent
 async function getMyLatestClaim(address: string) {
   const stmt = db.prepare(
-    "SELECT address, score, claims, epoch_index FROM scores WHERE address = ? ORDER BY epoch DESC LIMIT 1"
+    "SELECT address, score, claims, epoch_index, epoch FROM scores WHERE address = ? ORDER BY epoch DESC LIMIT 1"
   );
   const claims = await stmt.all(address.toLowerCase());
   console.log("claims", claims);
@@ -368,7 +371,7 @@ async function generateMerkleRoot() {
     try {
       // eslint-disable-next-line array-callback-return
       scores.map((obj) => {
-        jsonData[obj.address] = obj.score * 1000000;
+        jsonData[obj.address] = obj.score;
       });
       console.log("Scores Obj --", jsonData);
       const merkleRootData = parseBalanceMap(jsonData);
