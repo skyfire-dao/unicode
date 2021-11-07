@@ -1,7 +1,7 @@
 import * as dotenv from "dotenv";
 import Web3 from "web3";
 import { AbiItem } from "web3-utils";
-
+import cors from "cors";
 import express from "express";
 // import helmet from "helmet";
 import path from "path";
@@ -80,7 +80,7 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
 /**
  * For a particular user get the score board
  */
-app.get("/public/user/claim", async (req: any, res: any) => {
+app.get("/public/user/claim", cors(), async (req: any, res: any) => {
   const user = req.query?.userAddress;
   if (user) {
     // retrieve from the DB the latest claims for this user and sent it
