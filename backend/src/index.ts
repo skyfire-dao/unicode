@@ -35,7 +35,7 @@ const web3 = new Web3(provider);
 dotenv.config();
 
 const app = express();
-const PORT = 8000;
+const PORT = 80;
 // app.use(helmet());
 app.use(express.json());
 
