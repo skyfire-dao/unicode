@@ -118,7 +118,8 @@ async function saveToDB(score: number, address: string) {
 
 async function calculateEpoch() {
   const currentBlock = await web3.eth.getBlockNumber();
-  const currentEpoch = Math.round((currentBlock - EPOCH_START) / process.env.BLOCK); //Every 10 ETH Block increment 1 epoch
+  const numBlocks = parseInt(process.env.BLOCK) || 30;
+  const currentEpoch = Math.round((currentBlock - EPOCH_START) / numBlocks);
   console.log("currentEpoch--", currentEpoch);
   return currentEpoch;
 }
@@ -144,206 +145,206 @@ async function generateMerkleRoot() {
   const jsonData: any = {};
   const abi = [
     {
-      "inputs": [
+      inputs: [
         {
-          "internalType": "address",
-          "name": "token_",
-          "type": "address"
-        }
+          internalType: "address",
+          name: "token_",
+          type: "address",
+        },
       ],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
+      stateMutability: "nonpayable",
+      type: "constructor",
     },
     {
-      "anonymous": false,
-      "inputs": [
+      anonymous: false,
+      inputs: [
         {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "epoch",
-          "type": "uint256"
+          indexed: false,
+          internalType: "uint256",
+          name: "epoch",
+          type: "uint256",
         },
         {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "index",
-          "type": "uint256"
+          indexed: false,
+          internalType: "uint256",
+          name: "index",
+          type: "uint256",
         },
         {
-          "indexed": false,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
+          indexed: false,
+          internalType: "address",
+          name: "account",
+          type: "address",
         },
         {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
+          indexed: false,
+          internalType: "uint256",
+          name: "amount",
+          type: "uint256",
+        },
       ],
-      "name": "Claimed",
-      "type": "event"
+      name: "Claimed",
+      type: "event",
     },
     {
-      "anonymous": false,
-      "inputs": [
+      anonymous: false,
+      inputs: [
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "previousOwner",
-          "type": "address"
+          indexed: true,
+          internalType: "address",
+          name: "previousOwner",
+          type: "address",
         },
         {
-          "indexed": true,
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
+          indexed: true,
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
       ],
-      "name": "OwnershipTransferred",
-      "type": "event"
+      name: "OwnershipTransferred",
+      type: "event",
     },
     {
-      "inputs": [
+      inputs: [
         {
-          "internalType": "uint256",
-          "name": "index",
-          "type": "uint256"
+          internalType: "uint256",
+          name: "index",
+          type: "uint256",
         },
         {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
+          internalType: "address",
+          name: "account",
+          type: "address",
         },
         {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
+          internalType: "uint256",
+          name: "amount",
+          type: "uint256",
         },
         {
-          "internalType": "bytes32[]",
-          "name": "merkleProof",
-          "type": "bytes32[]"
+          internalType: "bytes32[]",
+          name: "merkleProof",
+          type: "bytes32[]",
         },
         {
-          "internalType": "uint256",
-          "name": "_epoch",
-          "type": "uint256"
-        }
+          internalType: "uint256",
+          name: "_epoch",
+          type: "uint256",
+        },
       ],
-      "name": "claim",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
+      name: "claim",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
     },
     {
-      "inputs": [
+      inputs: [
         {
-          "internalType": "uint256",
-          "name": "index",
-          "type": "uint256"
+          internalType: "uint256",
+          name: "index",
+          type: "uint256",
         },
         {
-          "internalType": "uint256",
-          "name": "_epoch",
-          "type": "uint256"
-        }
+          internalType: "uint256",
+          name: "_epoch",
+          type: "uint256",
+        },
       ],
-      "name": "isClaimed",
-      "outputs": [
+      name: "isClaimed",
+      outputs: [
         {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
+          internalType: "bool",
+          name: "",
+          type: "bool",
+        },
       ],
-      "stateMutability": "view",
-      "type": "function"
+      stateMutability: "view",
+      type: "function",
     },
     {
-      "inputs": [
+      inputs: [
         {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
+          internalType: "uint256",
+          name: "",
+          type: "uint256",
+        },
       ],
-      "name": "merkleRootInEpoch",
-      "outputs": [
+      name: "merkleRootInEpoch",
+      outputs: [
         {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
+          internalType: "bytes32",
+          name: "",
+          type: "bytes32",
+        },
       ],
-      "stateMutability": "view",
-      "type": "function"
+      stateMutability: "view",
+      type: "function",
     },
     {
-      "inputs": [],
-      "name": "owner",
-      "outputs": [
+      inputs: [],
+      name: "owner",
+      outputs: [
         {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
+          internalType: "address",
+          name: "",
+          type: "address",
+        },
       ],
-      "stateMutability": "view",
-      "type": "function"
+      stateMutability: "view",
+      type: "function",
     },
     {
-      "inputs": [],
-      "name": "renounceOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
+      inputs: [],
+      name: "renounceOwnership",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
     },
     {
-      "inputs": [
+      inputs: [
         {
-          "internalType": "bytes32",
-          "name": "_merkleRoot",
-          "type": "bytes32"
+          internalType: "bytes32",
+          name: "_merkleRoot",
+          type: "bytes32",
         },
         {
-          "internalType": "uint256",
-          "name": "_epoch",
-          "type": "uint256"
-        }
+          internalType: "uint256",
+          name: "_epoch",
+          type: "uint256",
+        },
       ],
-      "name": "setMerkleRootPerEpoch",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
+      name: "setMerkleRootPerEpoch",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
     },
     {
-      "inputs": [],
-      "name": "token",
-      "outputs": [
+      inputs: [],
+      name: "token",
+      outputs: [
         {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
+          internalType: "address",
+          name: "",
+          type: "address",
+        },
       ],
-      "stateMutability": "view",
-      "type": "function"
+      stateMutability: "view",
+      type: "function",
     },
     {
-      "inputs": [
+      inputs: [
         {
-          "internalType": "address",
-          "name": "newOwner",
-          "type": "address"
-        }
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
       ],
-      "name": "transferOwnership",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
+      name: "transferOwnership",
+      outputs: [],
+      stateMutability: "nonpayable",
+      type: "function",
+    },
   ];
   const merkleDistributor = new web3.eth.Contract(
     abi as AbiItem[],
@@ -371,8 +372,6 @@ async function generateMerkleRoot() {
       "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
     );
     try {
-
-    
       for (const [key, value] of Object.entries(merkleRootData.claims)) {
         console.log(`${key}: ${value.proof}`);
         const info = updateStmt.run(
