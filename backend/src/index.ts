@@ -118,7 +118,7 @@ async function saveToDB(score: number, address: string) {
 
 async function calculateEpoch() {
   const currentBlock = await web3.eth.getBlockNumber();
-  const numBlocks = parseInt(process.env.BLOCK) || 30;
+  const numBlocks = parseInt(process.env.BLOCK || "30");
   const currentEpoch = Math.round((currentBlock - EPOCH_START) / numBlocks);
   console.log("currentEpoch--", currentEpoch);
   return currentEpoch;
