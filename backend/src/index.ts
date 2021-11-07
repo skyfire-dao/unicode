@@ -1,6 +1,7 @@
 import * as dotenv from "dotenv";
 import Web3 from "web3";
 import { AbiItem } from "web3-utils";
+
 import express from "express";
 // import helmet from "helmet";
 import path from "path";
@@ -71,8 +72,9 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
   console.log(req.body);
   const data: IScore = req.body as IScore;
   res.send("Request Received");
-
-  await saveToDB(data.score, data.address);
+  if (web3.utils.isAddress(data.address)) {
+    await saveToDB(data.score, data.address);
+  }
 });
 
 /**
