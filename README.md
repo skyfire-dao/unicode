@@ -13,6 +13,11 @@ Playing a game allows for a better UX for the end user to participate in the Def
 
 We extended the Uniswap's Merkle Distributor contract so that a single contract can be used for multiple epochs or snapshots.
 
+<p align="center">
+  <img src="skyfireDAO.png"/>
+</p>
+
+
 ## Sybil Mitigation
 We intend to have checks across snapshots so that the leader board distribution does not always favor particular addresses.
 Additionaly, every partnership gained via buying skyfire DAO tokens allows the partner to create multiple levels and unique challenges to prevent bot farm attacks. 
