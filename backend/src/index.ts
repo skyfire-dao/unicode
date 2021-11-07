@@ -90,15 +90,16 @@ app.get(
     maxAge: 84600,
   }),
   async (req: any, res: any) => {
-  const user = req.query?.userAddress;
-  if (user) {
-    // retrieve from the DB the latest claims for this user and sent it
-    const claims = await getMyLatestClaim(user);
-    res.send(JSON.stringify(claims));
-  } else {
-    res.send("No user found");
+    const user = req.query?.userAddress;
+    if (user) {
+      // retrieve from the DB the latest claims for this user and sent it
+      const claims = await getMyLatestClaim(user);
+      res.send(JSON.stringify(claims));
+    } else {
+      res.send("No user found");
+    }
   }
-});
+);
 
 /**
  * Get scoreboard for all users
@@ -368,47 +369,52 @@ async function generateMerkleRoot() {
 
   if (latestEpoch > currentEpoch) {
     const scores = await getAllScores(currentEpoch);
-    try {
-      // eslint-disable-next-line array-callback-return
-      scores.map((obj) => {
-        jsonData[obj.address] = obj.score;
-      });
-      console.log("Scores Obj --", jsonData);
-      const merkleRootData = parseBalanceMap(jsonData);
-      console.log(JSON.stringify(merkleRootData));
+    if (scores.length > 0) {
+      try {
+        // eslint-disable-next-line array-callback-return
+        scores.map((obj) => {
+          jsonData[obj.address] = obj.score;
+        });
+        console.log("Scores Obj --", jsonData);
+        const merkleRootData = parseBalanceMap(jsonData);
+        console.log(JSON.stringify(merkleRootData));
 
-      const updateStmt = db.prepare(
-        "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
-      );
-
-      for (const [key, value] of Object.entries(merkleRootData.claims)) {
-        console.log(`${key}: ${value.proof}`);
-        const info = updateStmt.run(
-          value.proof.toString(),
-          value.index,
-          currentEpoch,
-          key.toLowerCase()
+        const updateStmt = db.prepare(
+          "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
         );
-        if (info.changes === 0) {
-          console.error(
-            "FAILED TO UPDATE MERKLE DATA",
-            key,
-            merkleRootData.claims
+
+        for (const [key, value] of Object.entries(merkleRootData.claims)) {
+          console.log(`${key}: ${value.proof}`);
+          const info = updateStmt.run(
+            value.proof.toString(),
+            value.index,
+            currentEpoch,
+            key.toLowerCase()
           );
-        }
-      }
-
-      await merkleDistributor.methods
-        .setMerkleRootPerEpoch(merkleRootData.merkleRoot, currentEpoch)
-        .send(
-          { from: "0xCd746dbAec699A3E0B42e411909e67Ad8BbCC315" },
-          (error: any, result: any) => {
-            console.log(error, result);
+          if (info.changes === 0) {
+            console.error(
+              "FAILED TO UPDATE MERKLE DATA",
+              key,
+              merkleRootData.claims
+            );
           }
-        );
+        }
+
+        await merkleDistributor.methods
+          .setMerkleRootPerEpoch(merkleRootData.merkleRoot, currentEpoch)
+          .send(
+            { from: "0xCd746dbAec699A3E0B42e411909e67Ad8BbCC315" },
+            (error: any, result: any) => {
+              console.log(error, result);
+            }
+          );
+        currentEpoch = latestEpoch;
+      } catch (error) {
+        console.error(error);
+      }
+    } else {
+      // no scores
       currentEpoch = latestEpoch;
-    } catch (error) {
-      console.error(error);
     }
   }
 }
