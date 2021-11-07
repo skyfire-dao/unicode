@@ -1,15 +1,38 @@
 # Unicode - Hackathon
 
 Skyfire DAO delivers games for distribution events for eg. Liquidity Mining events.
-You can utilize our contracts and game for your LM event. Skyfire DAO tokens are rewarded to all partner LM events. For partnerships, just create a github issue and we will get in touch.
+You can utilize our contracts and game for your LM event. Skyfire DAO tokens are rewarded to all partner LM events.
+For partnerships, just create a github issue and we will get in touch.
 
 <p align="center">
   <img src="CoverImage.png"/>
 </p>
 
-# Architecture
+## Innovation
+Playing a game allows for a better UX for the end user to participate in the Defi ecosystem and game incentives makes it interesting for a wider variety of audience to participate in Liquidity Mining events. 
 
-We utilize Gamemaker and Uniswap's Merkle Distribution to distribute tokens for different snapshots as per the rewards in the LM program.
+We extended the Uniswap's Merkle Distributor contract so that a single contract can be used for multiple epochs or snapshots.
+
+## Sybil Mitigation
+We intend to have checks across snapshots so that the leader board distribution does not always favor particular addresses.
+Additionaly, every partnership gained via buying skyfire DAO tokens allows the partner to create multiple levels and unique challenges to prevent bot farm attacks. 
+
+## Use Cases
+
+Bob has a DAO and he wants get more people to participate in his community so he runs a Liquidity Mining event using Uniswap's stake contracts. 
+
+In order to increase participation, he buys skyfire DAO tokens and integrates the game as an option for his users by connecting the stake contract to the merkle distributor. 
+
+# How we made it?
+
+We utilize Gamemaker Studio  and Uniswap's Merkle Distribution to distribute tokens for different snapshots as per the rewards in the LM program. All game sprites and graphics were created during the hackathon itself. The Uniswap Merkle distribution contract was also integrated and modified. 
+
+## Deployment details
+### Site
+http://3.84.149.133/public/index.html
+
+### Contract
+https://rinkeby.etherscan.io/address/0x47455f503Ee95A2E1E800b4fE5199604499f3316#writeContract
 
 ## How to run
 ``` 

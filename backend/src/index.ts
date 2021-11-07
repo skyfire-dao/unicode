@@ -72,7 +72,7 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
   console.log(req.body);
   const data: IScore = req.body as IScore;
   res.send("Request Received");
-  if (web3.utils.isAddress(data.address)) {
+  if (web3.utils.isAddress(data.address) && data.score > 0) {
     await saveToDB(data.score, data.address);
   }
 });
