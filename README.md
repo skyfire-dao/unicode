@@ -14,6 +14,10 @@ npm install
 npm start run
 ```
 
+TODOS
+1. Check whether metamask is connected before game begins
+1. Take a LP token as payment for game to start
+
 
 # Advanced Sample Hardhat Project
 
