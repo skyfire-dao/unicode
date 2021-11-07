@@ -1,14 +1,16 @@
 import * as dotenv from "dotenv";
 import Web3 from "web3";
 import { AbiItem } from "web3-utils";
+import cors from "cors";
 import express from "express";
 // import helmet from "helmet";
+
 import path from "path";
 import Database from "better-sqlite3";
 import { parseBalanceMap } from "./parse-balance-map";
 // import { ethers } from "hardhat";
 import HDWalletProvider from "@truffle/hdwallet-provider";
-import MerkleDistributor from "../../artifacts/contracts/MerkleDistributor.sol/MerkleDistributor.json";
+// import MerkleDistributor from "../../artifacts/contracts/MerkleDistributor.sol/MerkleDistributor.json";
 // import Moralis from "moralis/node";
 dotenv.config();
 
@@ -35,7 +37,7 @@ const web3 = new Web3(provider);
 dotenv.config();
 
 const app = express();
-const PORT = 8000;
+const PORT = 80;
 // app.use(helmet());
 app.use(express.json());
 
@@ -48,12 +50,13 @@ interface IScore {
 }
 
 /**
- * CONSTANTS
+ * CONSTANTS & Globals
  */
 const EPOCH_START = 9593770;
+let currentEpoch = 0;
 
 const createTable =
-  "CREATE TABLE IF NOT EXISTS scores('epoch' number, 'score' number, 'address' varchar);";
+  "CREATE TABLE IF NOT EXISTS scores('epoch' number, 'score' number, 'address' varchar, 'epoch_index' number, 'claims' varchar);";
 
 const db = new Database("skyfire.db", { verbose: console.log });
 db.exec(createTable);
@@ -70,17 +73,33 @@ app.post("/public/user/scoreboard", async (req: any, res: any) => {
   console.log(req.body);
   const data: IScore = req.body as IScore;
   res.send("Request Received");
-
-  await saveToDB(data.score, data.address);
-  await generateMerkleRoot();
+  if (web3.utils.isAddress(data.address) && data.score > 0) {
+    await saveToDB(
+      parseInt(web3.utils.toWei(data.score.toString())),
+      data.address
+    );
+  }
 });
 
 /**
  * For a particular user get the score board
  */
-app.get("/public/user/history", (req: any, res: any) => {
-  res.send("Got a request");
-});
+app.get(
+  "/public/user/claim",
+  (cors as (options: cors.CorsOptions) => express.RequestHandler)({
+    maxAge: 84600,
+  }),
+  async (req: any, res: any) => {
+    const user = req.query?.userAddress;
+    if (user) {
+      // retrieve from the DB the latest claims for this user and sent it
+      const claims = await getMyLatestClaim(user);
+      res.send(JSON.stringify(claims));
+    } else {
+      res.send("No user found");
+    }
+  }
+);
 
 /**
  * Get scoreboard for all users
@@ -100,38 +119,47 @@ async function saveToDB(score: number, address: string) {
   );
   const info = updateStmt.run(score, epoch, address);
   if (info.changes === 0) {
-    const stmt = db.prepare("INSERT INTO scores VALUES (?, ?, ?)");
+    const stmt = db.prepare(
+      "INSERT INTO scores (epoch, score, address) VALUES (?, ?, ?)"
+    );
     stmt.run(epoch, score, address);
   }
 }
 
 async function calculateEpoch() {
   const currentBlock = await web3.eth.getBlockNumber();
-  const currentEpoch = Math.round((currentBlock - EPOCH_START) / 100);
+  const numBlocks = parseInt(process.env.BLOCK || "30");
+  const currentEpoch = Math.round((currentBlock - EPOCH_START) / numBlocks);
   console.log("currentEpoch--", currentEpoch);
   return currentEpoch;
 }
 
-async function getAllScores() {
-  const stmt = db.prepare("SELECT score, address FROM scores WHERE epoch =?");
-  const scores = await stmt.all(CURRENT_EPOCH);
+async function getAllScores(_epoch: number) {
+  const stmt = db.prepare("SELECT score, address FROM scores WHERE epoch = ?");
+  const scores = await stmt.all(_epoch);
   console.log(scores);
   return scores;
 }
+// TODO: We need to store the claimed already information here so that the latest unclaimed can be sent
+async function getMyLatestClaim(address: string) {
+  const stmt = db.prepare(
+    "SELECT address, score, claims, epoch_index, epoch FROM scores WHERE address = ? ORDER BY epoch DESC LIMIT 1"
+  );
+  const claims = await stmt.all(address.toLowerCase());
+  console.log("claims", claims);
+  // Here if claims is a single data then return array
+  if (!Array.isArray(claims[0].claims)) {
+    const newClaims = [];
+    newClaims.push(claims[0].claims);
+    claims[0].claims = newClaims;
+    console.log("Modified Claims -- ", claims);
+  }
+  return claims;
+}
 
-let CURRENT_EPOCH = 0;
+// the merkle root has to be created for an epoch that is complete eg. T-1
 async function generateMerkleRoot() {
   const jsonData: any = {};
-  const scores = await getAllScores();
-  // eslint-disable-next-line array-callback-return
-  scores.map((obj) => {
-    jsonData[obj.address] = obj.score;
-  });
-  console.log(jsonData);
-  const merkleRootData = parseBalanceMap(jsonData);
-  console.log(JSON.stringify(merkleRootData));
-  console.log("CURRENT EPOCH", CURRENT_EPOCH);
-  // 1. Store the data
   const abi = [
     {
       inputs: [
@@ -147,6 +175,12 @@ async function generateMerkleRoot() {
     {
       anonymous: false,
       inputs: [
+        {
+          indexed: false,
+          internalType: "uint256",
+          name: "epoch",
+          type: "uint256",
+        },
         {
           indexed: false,
           internalType: "uint256",
@@ -226,6 +260,11 @@ async function generateMerkleRoot() {
         {
           internalType: "uint256",
           name: "index",
+          type: "uint256",
+        },
+        {
+          internalType: "uint256",
+          name: "_epoch",
           type: "uint256",
         },
       ],
@@ -331,24 +370,70 @@ async function generateMerkleRoot() {
 
   const latestEpoch = await calculateEpoch();
 
-  if (latestEpoch > CURRENT_EPOCH) {
-    await merkleDistributor.methods
-      .setMerkleRootPerEpoch(merkleRootData.merkleRoot, CURRENT_EPOCH)
-      .send(
-        { from: "0xCd746dbAec699A3E0B42e411909e67Ad8BbCC315" },
-        (error: any, result: any) => {
-          console.log(error, result);
+  const msg =
+    "Attempting merkleroot generation current epoch && Latest epoch -";
+  console.log(msg, currentEpoch, latestEpoch);
+
+  if (latestEpoch > currentEpoch) {
+    const scores = await getAllScores(currentEpoch);
+    if (scores.length > 0) {
+      try {
+        // eslint-disable-next-line array-callback-return
+        scores.map((obj) => {
+          jsonData[obj.address] = obj.score;
+        });
+        console.log("Scores Obj --", jsonData);
+        const merkleRootData = parseBalanceMap(jsonData);
+        console.log(JSON.stringify(merkleRootData));
+
+        const updateStmt = db.prepare(
+          "UPDATE scores SET claims = ?, epoch_index = ? where epoch = ? and address = ?"
+        );
+
+        for (const [key, value] of Object.entries(merkleRootData.claims)) {
+          console.log(`${key}: ${value.proof}`);
+          const info = updateStmt.run(
+            value.proof.toString(),
+            value.index,
+            currentEpoch,
+            key.toLowerCase()
+          );
+          if (info.changes === 0) {
+            console.error(
+              "FAILED TO UPDATE MERKLE DATA",
+              key,
+              merkleRootData.claims
+            );
+          }
         }
-      );
-    CURRENT_EPOCH = latestEpoch;
+
+        await merkleDistributor.methods
+          .setMerkleRootPerEpoch(merkleRootData.merkleRoot, currentEpoch)
+          .send(
+            { from: "0xCd746dbAec699A3E0B42e411909e67Ad8BbCC315" },
+            (error: any, result: any) => {
+              console.log(error, result);
+            }
+          );
+        currentEpoch = latestEpoch;
+      } catch (error) {
+        console.error(error);
+      }
+    } else {
+      // no scores
+      currentEpoch = latestEpoch;
+    }
   }
 }
 
 async function init() {
- CURRENT_EPOCH = await calculateEpoch();
+  currentEpoch = await calculateEpoch();
+  // await saveToDB(22, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+  // await testUpdate()
+  // await getMyLatestClaim("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+  setInterval(() => generateMerkleRoot(), 2 * 60 * 1000); // Every 5 minutes check if epoch is over
+  // calculateEpoch();
+  // getAllScores();
 }
 
-// calculateEpoch();
-// saveToDB(22, "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
-// getAllScores();
-init()
+init();
