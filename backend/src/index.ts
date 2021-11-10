@@ -156,7 +156,10 @@ async function getMyLatestClaim(address: string) {
     newClaims.push(claims[0].claims);
     claims[0].claims = newClaims;
     console.log("Modified Claims -- ", claims);
+  } else {
+    claims[0].claims = claims[0].claims.split(",");
   }
+
   return claims;
 }
 
