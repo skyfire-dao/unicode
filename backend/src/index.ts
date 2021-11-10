@@ -148,12 +148,12 @@ async function getMyLatestClaim(address: string) {
   const claims = await stmt.all(address.toLowerCase());
   console.log("claims", claims);
   // Here if claims is a single data then return array
-  if (!Array.isArray(claims[0].claims)) {
+  // if (!Array.isArray(claims[0].claims)) {
     const newClaims = [];
     newClaims.push(claims[0].claims);
     claims[0].claims = newClaims;
     console.log("Modified Claims -- ", claims);
-  }
+  // }
   return claims;
 }
 
